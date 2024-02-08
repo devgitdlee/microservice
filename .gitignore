@@ -1,0 +1,7 @@
+## 다음과 같은 확장자는 전체 무시
+*.text
+*.exe
+*.zip
+
+## 폴더 무시
+flask/dbdata
