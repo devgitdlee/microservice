@@ -5,3 +5,7 @@
 
 ## 폴더 무시
 flask/dbdata
+
+[user]
+    name = Your Name
+    email = you@example.com
