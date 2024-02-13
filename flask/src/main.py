@@ -1,6 +1,9 @@
-from flask import Flask,jsonify, render_template, request, url_for, redirect
+from flask import Flask,jsonify, render_template, request, url_for, redirect,send_from_directory
 import pymysql
 import config
+import uuid
+import os
+from werkzeug.utils import secure_filename
 app = Flask("JobScrapper")
 
 
@@ -33,7 +36,6 @@ def create():
             return redirect(url_for('read'))
         except Exception as e:
             # Handle errors
-            print(e)
             return "Error creating record!"
 
     return render_template('create.html')
@@ -44,11 +46,10 @@ def read():
         # Create SQL query
         sql = "SELECT * FROM board"
         cursor.execute(sql)
-        records = cursor.fetchall()
+        records = cursor.fetchall(20)
         return render_template('read.html', records=records)
     except Exception as e:
         # Handle errors
-        print(e)
         return "Error fetching records!"
     
 @app.route('/update/<id>', methods=['GET', 'POST'])
@@ -61,14 +62,13 @@ def update(id):
             content = data.get('content')
 
             # Create SQL query
-            sql = "UPDATE board SET board_title = %s, board_content = %s WHERE board_id = %s"
+            sql = "UPDATE BOARD SET board_title = %s, board_content = %s WHERE board_id = %s"
             cursor.execute(sql, (title, content, id))
             conn.commit()
 
             return redirect(url_for('read'))
         except Exception as e:
             # Handle errors
-            print(e)
             return "Error updating record!"
         
 
@@ -79,7 +79,7 @@ def delete(id):
         try:
             # Get form data
             # Create SQL query
-            sql = "delete from board WHERE board_id = %s"
+            sql = "delete from BOARD WHERE board_id = %s"
             cursor.execute(sql, (id))
             conn.commit()
 
@@ -89,6 +89,53 @@ def delete(id):
             print(e)
             return "Error updating record!"
 
+
+@app.route("/upload", methods=['GET', 'POST'])
+def upload():
+    if request.method == "POST":
+        try:
+            file = request.files["file"]    
+            file_uuid = uuid.uuid4()
+
+            filepathsave = os.path.join(config.FILE_SAVE_PATH,secure_filename(file.filename))
+            file.save(filepathsave)
+            # Create SQL query
+            sql = "INSERT INTO TB_FILE (file_id, file_path, file_name) values(%s,%s,%s)"
+            cursor.execute(sql, (file_uuid,config.FILE_SAVE_PATH,file.filename))
+            conn.commit()
+            
+
+            return redirect(url_for("uploadhome"))
+        except Exception as e:
+            # Handle errors
+            return "Error upload record!"
+        
+
+@app.route("/uploadhome")
+def uploadhome():
+    return render_template("fileupload.html")
+
+
+@app.route("/download", methods=["POST"])
+def download_file():
+    try:
+        # Get form data      
+        data = request.get_json()
+        file_id = data.get('file_id')
+        
+
+        # Create SQL query
+        sql = "SELECT file_path, file_name FROM TB_FILE where file_id = %s"
+        cursor.execute(sql, (file_id))
+        records = cursor.fetchone
+        
+
+        return send_from_directory(records.file_path, records.file_name)
+    except Exception as e:
+        # Handle errors
+        print(e)
+        return "Error download record!"
+   
 
 if __name__ == '__main__':
   app.run("0.0.0.0", port=8080)
