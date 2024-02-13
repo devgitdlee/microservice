@@ -3,6 +3,8 @@
 *.exe
 *.zip
 
+flask/src/config.py
+
 ## 폴더 무시
 flask/dbdata
 
