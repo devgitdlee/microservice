@@ -20,6 +20,7 @@ services:
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=mydb
+      - TZ=Asia/Seoul
     ports:
       - "33006:3306"
     container_name: db

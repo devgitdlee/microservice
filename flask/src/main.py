@@ -1,9 +1,13 @@
-from flask import Flask,jsonify, render_template, request, url_for, redirect,send_from_directory
+from flask import Flask,jsonify, render_template, request, url_for, redirect,send_from_directory,session
 import pymysql
 import config
 import uuid
 import os
 from werkzeug.utils import secure_filename
+
+FILE_SAVE_PATH = "C:/file/"
+FILE_DOWNLOAD_PATH = "다운로드"
+
 app = Flask("JobScrapper")
 
 
@@ -16,7 +20,25 @@ cursor = conn.cursor()
 
 @app.route("/")
 def home():
-  return 'Hello Flask!'
+    return 'Hello Flask!'
+    ## db연결 ##
+    sql = "SELECT * FROM board where deldt is null" 
+    boards = conn.executeAll(sql) 
+    if 'userid' not in session:
+        #print("비로그인 상태")
+        return render_template('/main/index.html', boards=boards)
+
+    #로그인시, write, delete, update 가능
+    #admin은 db자체 편집가능 회원정보, 게시글정보
+    #print("로그인 상태")
+    userid = session.get('userid', None)
+    return render_template('/main/index.html', userid=userid, boards=boards)
+    
+
+
+@app.route("/write")
+def wirteview():
+  return render_template('write_board.html')
 
 
 @app.route('/create', methods=['GET', 'POST'])
@@ -37,20 +59,54 @@ def create():
         except Exception as e:
             # Handle errors
             return "Error creating record!"
-
-    return render_template('create.html')
+        finally:
+            db_afterprocess(cursor)
+    return render_template('write_board.html')
 
 @app.route('/read')
 def read():
     try:
         # Create SQL query
-        sql = "SELECT * FROM board"
+        sql = "SELECT board_id, board_title, board_crtdt FROM board where board_deldt is null"
         cursor.execute(sql)
-        records = cursor.fetchall(20)
-        return render_template('read.html', records=records)
+        records = cursor.fetchmany(20)
+        return render_template('read_board.html', records=records)
     except Exception as e:
         # Handle errors
         return "Error fetching records!"
+    finally:
+        db_afterprocess(cursor)   
+
+@app.route('/modify/<id>', methods=['GET', 'POST'])
+def modify(id):
+    if request.method == 'GET':
+        try:
+            # Create SQL query
+            sql = "select board_id, board_title, board_content from board where board_id = %s"
+            cursor.execute(sql, (id))
+            recode = cursor.fetchone()
+            cursor.close()
+            conn.close()
+            return render_template('modify_board.html',recode=recode)
+        except Exception as e:
+            # Handle errors
+            return "Error modify record!"   
+        finally:
+            db_afterprocess(cursor)
+@app.route('/view/<id>', methods=['GET'])
+def view(id):
+    try:
+        # Create SQL query
+        sql = "select board_id, board_title, board_content from board where board_id = %s"
+        cursor.execute(sql, (id))
+        recode = cursor.fetchone()
+        return render_template('board_view.html',recode=recode)
+    except Exception as e:
+        # Handle errors
+        return "Error view record!"
+    finally:
+        db_afterprocess(cursor)
+
     
 @app.route('/update/<id>', methods=['GET', 'POST'])
 def update(id):
@@ -62,15 +118,15 @@ def update(id):
             content = data.get('content')
 
             # Create SQL query
-            sql = "UPDATE BOARD SET board_title = %s, board_content = %s WHERE board_id = %s"
+            sql = "UPDATE BOARD SET board_title = %s, board_content = %s, board_upddt = now() WHERE board_id = %s"
             cursor.execute(sql, (title, content, id))
             conn.commit()
-
             return redirect(url_for('read'))
         except Exception as e:
             # Handle errors
             return "Error updating record!"
-        
+        finally:
+            db_afterprocess(cursor)
 
 
 @app.route('/delete/<id>', methods=['GET', 'POST'])
@@ -79,16 +135,17 @@ def delete(id):
         try:
             # Get form data
             # Create SQL query
-            sql = "delete from BOARD WHERE board_id = %s"
+            sql = "update board set board_deldt = now() WHERE board_id = %s"
             cursor.execute(sql, (id))
             conn.commit()
-
+            db_afterprocess(cursor)
             return redirect(url_for('read'))
         except Exception as e:
             # Handle errors
             print(e)
-            return "Error updating record!"
-
+            return "Error delete record!"
+        finally:
+            db_afterprocess(cursor)
 
 @app.route("/upload", methods=['GET', 'POST'])
 def upload():
@@ -97,45 +154,54 @@ def upload():
             file = request.files["file"]    
             file_uuid = uuid.uuid4()
 
-            filepathsave = os.path.join(config.FILE_SAVE_PATH,secure_filename(file.filename))
+            filepathsave = os.path.join(FILE_SAVE_PATH,secure_filename(file.filename))
             file.save(filepathsave)
             # Create SQL query
             sql = "INSERT INTO TB_FILE (file_id, file_path, file_name) values(%s,%s,%s)"
-            cursor.execute(sql, (file_uuid,config.FILE_SAVE_PATH,file.filename))
+            cursor.execute(sql, (file_uuid,FILE_SAVE_PATH,file.filename))
             conn.commit()
-            
-
             return redirect(url_for("uploadhome"))
         except Exception as e:
             # Handle errors
             return "Error upload record!"
-        
+        finally:
+            db_afterprocess(cursor)
 
 @app.route("/uploadhome")
 def uploadhome():
-    return render_template("fileupload.html")
-
-
-@app.route("/download", methods=["POST"])
-def download_file():
     try:
-        # Get form data      
-        data = request.get_json()
-        file_id = data.get('file_id')
-        
-
         # Create SQL query
-        sql = "SELECT file_path, file_name FROM TB_FILE where file_id = %s"
-        cursor.execute(sql, (file_id))
-        records = cursor.fetchone
-        
+        sql = "SELECT file_id,file_name,file_crtdt FROM tb_file ORDER BY file_crtdt desc" 
+        cursor.execute(sql)
+        records = cursor.fetchmany(20)
 
-        return send_from_directory(records.file_path, records.file_name)
+        return render_template("fileupload.html",records=records)
     except Exception as e:
         # Handle errors
-        print(e)
         return "Error download record!"
+    finally:
+        db_afterprocess(cursor)
+
+    
+@app.route("/download/<id>", methods=["GET"])
+def download_file(id):
+    try:
+        # Create SQL query
+        sql = "SELECT file_path, file_name FROM TB_FILE where file_id = %s"
+        cursor.execute(sql, (id))
+        record = cursor.fetchone()
+        print(record)
+        return send_from_directory(directory='file', filename=record[1])
+    except Exception as e:
+        # Handle errors
+        return "Error download record!"
+    finally:
+        db_afterprocess(cursor)
    
+def db_afterprocess(cursor):
+    cursor.close()
+    conn.close()
+
 
 if __name__ == '__main__':
   app.run("0.0.0.0", port=8080)

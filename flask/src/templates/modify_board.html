@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+    <div>
+        <form action="/update/{{recode[0]}}" method="POST">
+            <p>제목</p>
+            <input type="text" id="title" name="title" class="form-control" value="{{recode[1]}}"> <br>
+            <p>내용</p>
+            <textarea id="content" name="content" class="form-control" value="{{recode[2]}}"></textarea>
+            <br>
+            
+            <div class="form-row float-right">
+            <button type="submit" class="btn btn-primary">수정</button>
+            </div>
+        </form>
+        <br/>
+        <div class="form-row float-right">
+            <a href="/delete/{{recode[0]}}">삭제</a>
+        </div>
+    </div>
+</body>
+</html>

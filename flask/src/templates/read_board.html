@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:float="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="UTF-8">
+    <title>Home</title>
+    <style>
+        table {
+            width: 100%;
+            border-top: 1px solid #444444;
+            border-collapse: collapse;
+        }
+        th, td {
+            border-bottom: 1px solid #444444;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #bbdefb;
+        }
+        td {
+            background-color: #e3f2fd;
+        }
+</style>
+</head>
+ 
+<body>
+    <p>
+        <h1> Hello ! </h1>
+    </p>
+ 
+ 
+    <table class="table">
+        <tr>
+            <th>번호</th>
+            <th>제목</th>
+            <th>작성시간</th>
+        </tr>
+        {% for obj in records%}
+        <tbody>
+            <tr>
+                
+                <td>{{obj[0]}}</td>
+                <td><a href="/view/{{obj[0]}}">{{obj[1]}}</td>
+                <td>{{obj[2]}}</td>
+            </tr>
+        </tbody>
+        {% endfor %}
+    </table>
+</body>
+ 
+</html>
