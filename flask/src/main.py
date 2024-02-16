@@ -1,4 +1,4 @@
-from flask import Flask,jsonify, render_template, request, url_for, redirect,send_from_directory,session
+from flask import Flask,jsonify, render_template, request, url_for, redirect,send_from_directory,session,send_file
 import pymysql
 import config
 import uuid
@@ -69,8 +69,9 @@ def read():
         # Create SQL query
         sql = "SELECT board_id, board_title, board_crtdt FROM board where board_deldt is null"
         cursor.execute(sql)
-        records = cursor.fetchmany(20)
-        return render_template('read_board.html', records=records)
+        records = cursor.fetchall()
+        cnt = records.count()
+        return render_template('read_board.html', records=records, recode_cnt=cnt)
     except Exception as e:
         # Handle errors
         return "Error fetching records!"
@@ -173,7 +174,7 @@ def uploadhome():
         # Create SQL query
         sql = "SELECT file_id,file_name,file_crtdt FROM tb_file ORDER BY file_crtdt desc" 
         cursor.execute(sql)
-        records = cursor.fetchmany(20)
+        records = cursor.fetchall()
 
         return render_template("fileupload.html",records=records)
     except Exception as e:
@@ -187,11 +188,10 @@ def uploadhome():
 def download_file(id):
     try:
         # Create SQL query
-        sql = "SELECT file_path, file_name FROM TB_FILE where file_id = %s"
+        sql = "SELECT file_path, file_name FROM tb_file where file_id = %s"
         cursor.execute(sql, (id))
-        record = cursor.fetchone()
-        print(record)
-        return send_from_directory(directory='file', filename=record[1])
+        recode = cursor.fetchone()
+        return send_file(recode[0]+recode[1],as_attachment=True)
     except Exception as e:
         # Handle errors
         return "Error download record!"
