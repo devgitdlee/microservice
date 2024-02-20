@@ -77,14 +77,18 @@
     <nav aria-label="Page navigation">
         <ul class="pagination">
             {% if active_page-1 == 0 %}
-                <li><a href="/read/{{active_page}}">≪</a></li>
+                <li><a href="/read?page={{active_page}}">≪</a></li>
             {% else %}
-                <li><a href="/read/{{active_page-1}}">≪</a></li>
+                <li><a href="/read?page={{active_page-1}}">≪</a></li>
             {% endif%}
             {% for X in range(page_cnt) %}
-                <li><a href="/read/{{X+1}}">{{X+1}}</a></li>
+                {% if active_page == X+1 %}
+                    <li><a href="/read?page={{X+1}}" class="active">{{X+1}}</a></li>
+                {% else %}
+                    <li><a href="/read?page={{X+1}}">{{X+1}}</a></li>
+                {% endif %}
             {% endfor %}
-            <li><a href="/read/{{active_page+1}}">»</a></li>
+            <li><a href="/read?page={{active_page+1}}">»</a></li>
         </ul>
     </nav>
       

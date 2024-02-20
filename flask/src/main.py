@@ -46,9 +46,7 @@ def create():
     if request.method == 'POST':
         try:
             # Get form data
-            print("aaaaa")
             data = request.get_json()
-            print(data)
             title = data.get('title')
             content = data.get('content')
             # Create SQL query
@@ -77,17 +75,24 @@ def board_read_cnt():
         return "Error board_read_cnt record!"
         
 
-@app.route('/read/<page>', methods=['GET'])
-def read(page):
+
+@app.route('/read', methods=['GET'])
+def read():
+
     get_list_cnt = 20
+    page = 1
+    if request.args.get("page") != None:
+        page = int(request.args.get("page"))
+    if request.args.get("list_cnt") != None: 
+        get_list_cnt = int(request.args.get("list_cnt"))
     try:
-        list_page = get_list_cnt * (int(page) - 1)
+        list_page = get_list_cnt * (page - 1)
         cursor = conn.cursor()
         sql = "SELECT board_id, board_title, board_crtdt FROM board where board_deldt is null order by board_id desc limit %s OFFSET %s"
         cursor.execute(sql, (get_list_cnt,list_page))
         recodes = cursor.fetchall()
         page_cnt = board_read_cnt() / get_list_cnt
-        return render_template('read_board.html', recodes=recodes,page_cnt=math.ceil(page_cnt),active_page=int(page))
+        return render_template('read_board.html', recodes=recodes,page_cnt=math.ceil(page_cnt),active_page=page)
     except Exception as e:
         # Handle errors
         return "Error fetching records!"
@@ -115,7 +120,6 @@ def view(id):
         sql = "select board_id, board_title, board_content from board where board_id = %s"
         cursor.execute(sql, (id))
         recode = cursor.fetchone()
-        print(recode)
         return render_template('board_view.html',recode=recode)
     except Exception as e:
         # Handle errors
