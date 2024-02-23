@@ -1,4 +1,5 @@
 from flask import Flask,jsonify, render_template, request, url_for, redirect,send_from_directory,session,send_file
+import json
 import pymysql
 import config
 import uuid
@@ -62,6 +63,21 @@ def create():
             db_afterprocess(cursor)
     return render_template('write_board.html')
 
+@app.route('/jsontest', methods=['GET'])
+def board_read_cnt():
+    try:
+        cursor = conn.cursor(pymysql.cursors.DictCursor)
+        sql = "SELECT board_id, board_title, DATE_FORMAT(board_crtdt,'%Y-%m-%d %H:%i:%s') as board_crtdt  FROM board"
+        cursor.execute(sql)
+        recodes = cursor.fetchall()
+        print(json.dumps(recodes))
+        return jsonify(recodes)
+    except Exception as e:
+        # Handle errors
+        return "Error json_test record!"
+    finally:
+        db_afterprocess(cursor)
+
 def board_read_cnt():
     try:
         cursor = conn.cursor()
@@ -74,6 +90,9 @@ def board_read_cnt():
         # Handle errors
         return "Error board_read_cnt record!"
         
+
+
+
 
 
 @app.route('/read', methods=['GET'])
@@ -90,9 +109,9 @@ def read():
         cursor = conn.cursor()
         sql = "SELECT board_id, board_title, board_crtdt FROM board where board_deldt is null order by board_id desc limit %s OFFSET %s"
         cursor.execute(sql, (get_list_cnt,list_page))
-        recodes = cursor.fetchall()
+        records = cursor.fetchall()
         page_cnt = board_read_cnt() / get_list_cnt
-        return render_template('read_board.html', recodes=recodes,page_cnt=math.ceil(page_cnt),active_page=page)
+        return render_template('read_board.html', records=records,page_cnt=math.ceil(page_cnt),active_page=page)
     except Exception as e:
         # Handle errors
         return "Error fetching records!"
@@ -106,21 +125,22 @@ def modify(id):
             cursor = conn.cursor()
             sql = "select board_id, board_title, board_content from board where board_id = %s"
             cursor.execute(sql, (id))
-            recode = cursor.fetchone()
-            return render_template('modify_board.html',recode=recode)
+            record = cursor.fetchone()
+            return render_template('modify_board.html',record=record)
         except Exception as e:
             # Handle errors
             return "Error modify record!"   
         finally:
             db_afterprocess(cursor)
+            
 @app.route('/view/<id>', methods=['GET'])
 def view(id):
     try:
         cursor = conn.cursor()
         sql = "select board_id, board_title, board_content from board where board_id = %s"
         cursor.execute(sql, (id))
-        recode = cursor.fetchone()
-        return render_template('board_view.html',recode=recode)
+        record = cursor.fetchone() 
+        return render_template('board_view.html',record=record)
     except Exception as e:
         # Handle errors
         return "Error view record!"
@@ -133,9 +153,7 @@ def update(id):
     if request.method == 'POST':
         try:
             # Get form data
-            print("aaaaa")
             data = request.get_json()
-            print(data)
             title = data.get('title')
             content = data.get('content')
             cursor = conn.cursor()
